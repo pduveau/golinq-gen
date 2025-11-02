@@ -1,0 +1,29 @@
+package linq
+
+import (
+	"{{.}}/linq/a"
+	"{{.}}/linq/aacircular"
+)
+
+// To avoid static circular, the circular link is made dynamically by this method
+// Be sure to call it before any use of linq packages
+func InitLinq() {
+	a.NewExt_aaCircular = aacircular.NewExt_a
+	a.NewGraphicData_aaCircular = aacircular.NewGraphicData_a
+}
+
+func Ext_a_to_Ext_aacircular(in *a.Ext_a) *aacircular.Ext_a {
+	switch a := in.Instance.(type) {
+	case *aacircular.Ext_a:
+		return a
+	}
+	return nil
+}
+
+func GraphicData_a_to_GraphicData_aacircular(in *a.Ext_a) *aacircular.GraphicData_a {
+	switch a := in.Instance.(type) {
+	case *aacircular.GraphicData_a:
+		return a
+	}
+	return nil
+}

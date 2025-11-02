@@ -1,0 +1,269 @@
+// Generated using template/class
+package {{.Package}}
+
+import (
+{{if .HasTextOnly}}	"bytes"
+{{end}}	"encoding/xml"
+{{if .HasChildren}}	"slices"
+{{end}}
+	"{{.Github}}/linq/common"
+{{range .Imports}}	"{{.}}"
+{{end}})
+
+type {{.Class}} struct {
+{{if .Shared}}	ns, tag    string
+
+{{end}}{{range .Attributes}}	{{.Field}} *string `xml:"{{.ATag}},attr"`
+{{end}}{{if .HasTextOnly}}	Text string
+{{end}}
+{{if .HasProperties}}
+	Properties {{.PropertyClass}}
+{{end}}
+{{if .HasChildren}}
+	children []common.Container
+}
+
+// map to restrict to the foreseen children
+var mapChildren{{.Class}} = map[string]common.FuncXMLNameToContainer{
+{{range .Empty}}	"{{.CTag}}": common.NewEmpty,
+{{end}}{{range .Val}}	"{{.CTag}}": common.NewVal,
+{{end}}{{range .Text}}	"{{.CTag}}": common.New{{.Type}},
+{{end}}{{range .Children}}	"{{.CTag}}": {{.TypeNew}},
+{{end -}}
+}
+{{else}}
+}
+{{end}}
+
+func (class *{{.Class}}) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error) {
+	var currentToken xml.Token
+{{if .HasTextOnly}}	var buf bytes.Buffer
+{{end}}{{if .Shared}}
+	class.ns = start.Name.Space
+	class.tag = start.Name.Local
+{{end}}
+{{if .HasAttributes}}
+	listA := map[string]**string{
+{{range .Attributes}}		"{{.ATag}}": &class.{{.Field}},
+{{end}}	}
+	for _, t := range start.Attr {
+		if field, ok := listA[common.XmlName(t.Name)]; ok {
+			val := t.Value
+			*field = &val
+		}
+	}
+{{end}}
+	for {
+		currentToken, err = d.Token()
+		if err != nil {
+			return
+		}
+{{if .HasChildren}}
+		switch elem := currentToken.(type) {
+		case xml.StartElement:
+{{if .HasProperties}}
+			if common.XmlName(elem.Name) == "{{.PropertyTag}}" {
+				if err = d.DecodeElement(&class.Properties, &elem); err != nil {
+					return
+				}
+				continue
+			}
+
+{{end}}			if f, ok := mapChildren{{.Class}}[common.XmlName(elem.Name)]; ok {
+				container := f(elem.Name)
+				if err = d.DecodeElement(container, &elem); err != nil {
+					return
+				}
+				class.children = append(class.children, container)
+				continue
+			}{{if .HasText}}
+ 		case xml.CharData:
+			class.children = append(class.children, common.NewTextFragment(elem)){{end}}
+		case xml.EndElement:
+			return
+		}
+{{else if .HasTextOnly}}
+		switch elem := currentToken.(type) {
+		case xml.CharData:
+			buf.Write([]byte(elem))
+		case xml.EndElement:
+			if elem == start.End() {
+				class.Text = buf.String()
+				return nil
+			}
+		case xml.StartElement:
+			if err = d.Skip(); err != nil {
+				return
+			}
+		}
+{{else}}
+		switch currentToken.(type) {
+		case xml.EndElement:
+			return
+		case xml.StartElement:
+			if err = d.Skip(); err != nil {
+				return
+			}
+		}
+{{end}}	}
+}
+
+func (class {{.Class}}) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) {
+	start.Name.Local = {{if .Shared}}class.ns + ":" + class.tag {{- else}}"{{.ClassTag}}"{{end}}
+{{if .HasAttributes}}
+	list := []struct {
+		field *string
+		attr  string
+	}{
+{{range .Attributes}}		{class.{{.Field}}, "{{.ATag}}"},
+{{end}}	}
+	for _, v := range list {
+		if v.field != nil {
+			start.Attr = append(start.Attr, xml.Attr{Name: xml.Name{Local: v.attr}, Value: *v.field})
+		}
+	}
+{{end}}
+{{if .HasChildren}}
+	err = e.EncodeToken(start)
+	if err != nil {
+		return
+	}
+
+{{if .HasProperties}}
+	err = class.Properties.MarshalXML(e, xml.StartElement{})
+	if err != nil {
+		return
+	}
+
+{{end}}	for _, v := range class.children {
+		err = v.MarshalXML(e, xml.StartElement{})
+		if err != nil {
+			return
+		}
+	}
+	return e.EncodeToken(start.End())
+{{else}}
+	return e.EncodeElement({{if .HasTextOnly}}class.Text{{else}}""{{end}}, start)
+{{end -}} }
+{{if .Shared}}
+func New{{.Class}}(name xml.Name) common.Container {
+	return &{{.Class}}{
+		ns:  name.Space,
+		tag: name.Local,
+	}
+}
+
+func New{{.Class}}Class(name xml.Name) *{{.Class}} {
+	return &{{.Class}}{
+		ns:  name.Space,
+		tag: name.Local,
+	}
+}{{else}}
+func New{{.Class}}(_ xml.Name) common.Container {
+	return &{{.Class}}{}
+}
+
+func New{{.Class}}Class(_ xml.Name) *{{.Class}} {
+	return &{{.Class}}{}
+}
+
+{{end}}{{if .HasTextOnly}}func (class *{{.Class}})SetText(text string) {
+	class.Text = text
+}
+
+func (class *{{.Class}})GetText() string {
+	return class.Text
+}
+
+{{else if .HasText}}func (class *{{.Class}}) AddText(text string) {
+	class.children = append(class.children, common.NewTextFragment(text))
+}
+
+func (class *{{.Class}}) GetText() ([]string, []int) {
+	return common.GetTextFragment(class.children)
+}
+
+{{end}}{{if .HasChildren}}
+func (class *{{.Class}}) DeleteChildren(at, length int) {
+	if at > len(class.children) || at < 0 {
+		return
+	}
+	length = min(length, len(class.children) - at)
+	class.children = slices.Delete(class.children, at, length)
+}
+
+func (class *{{.Class}}) ReplaceChildren(in []common.Container, at, length int) {
+	if at > len(class.children) || at < 0 {
+		return
+	}
+	class.DeleteChildren(at, length)		
+	class.children = slices.Insert(class.children, at, in...)
+}
+
+func (class *{{.Class}}) InsertChildren(in []common.Container, at int) {
+	if at > len(class.children) || at < 0 {
+		return
+	}
+	class.children = slices.Insert(class.children, at, in...)
+}
+
+{{end}}{{range .Attributes}}
+func (class *{{.Class}}) ASet{{.Field}}(val ...any) *{{.Class}} {
+	class.{{.Field}} = common.SetString(val...)
+	return class
+}
+
+{{end}}{{range .Empty}}
+func (class *{{.Class}}) Get{{.Field}}() bool {
+	return common.GetEmpty(class.children, xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"}) > -1
+}
+
+func (class *{{.Class}}) Set{{.Field}}(v ...bool) {
+	class.children = common.SetEmpty(class.children, xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"}, v...)
+}
+
+{{end}}{{range .Val}}
+func (class *{{.Class}}) Get{{.Field}}() string {
+	_, v := common.GetVal(class.children, xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"})
+	return v
+}
+
+func (class *{{.Class}}) Set{{.Field}}(v ...any) {
+	class.children = common.SetVal(class.children, xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"}, v...)
+}
+
+{{end}}{{range .Text}}
+func (class *{{.Class}}) Get{{.Field}}() ([]string, []int) {
+	return common.Get{{.Type}}(class.children, xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"})
+}
+
+func (class *{{.Class}}) Set{{.Field}}(v ...string) {
+	class.children = common.Set{{.Type}}(class.children, xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"}, v...)
+}
+
+{{end}}{{range .Children}}{{$method := .Field}}{{if ne .FieldSfx ""}}{{$method = .FieldSfx}}
+func (class *{{.Class}}) Add{{$method}}() *{{.Type}} {
+	v := {{.TypeNew}}Class(xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"})
+{{else}}
+func (class *{{.Class}}) Add{{$method}}() *{{.Type}} {
+	v := {{.TypeNew}}Class(xml.Name{})
+{{end}}
+	class.children = append(class.children, v)
+	return v
+}
+
+func (class *{{.Class}}) Get{{$method}}() ([]*{{.Type}}, []int) {
+	return common.GetTyped[*{{.Type}}](class.children)
+}
+
+func (class *{{.Class}}) Set{{$method}}(children ...*{{.Type}}) {
+	_, t_i := common.GetTyped[*{{.Type}}](class.children)
+	for _, i := range t_i {
+		class.children = slices.Delete(class.children, i, i+1)
+	}
+	for _,v := range children {
+		class.children = append(class.children, v)
+	}
+}
+
+{{end}}

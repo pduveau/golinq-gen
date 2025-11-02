@@ -1,0 +1,182 @@
+// Generated using template/property
+package {{.Package}}
+
+import (
+	"encoding/xml"
+
+	"{{.Github}}/linq/common"
+{{range .Imports}}	"{{.}}"
+{{end}})
+
+type {{.Class}} struct {
+{{range .Attributes}}	{{.Field}} *string `xml:"{{.ATag}},attr"`
+{{end}}
+{{range .Empty}}	{{.Field}} *common.Empty `xml:"{{.CTag}}"`
+{{end -}}
+{{range .Val}}	{{.Field}} *common.Val `xml:"{{.CTag}}"`
+{{end -}}
+{{range .Text}}	{{.Field}} *common.{{.Type}} `xml:"{{.CTag}}"`
+{{end -}}
+{{range .Children}}	{{.Field}} *{{.Type}} `xml:"{{.CTag}}"`
+{{end -}}
+}
+
+func (class *{{.Class}}) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error) {
+	var currentToken xml.Token
+{{if .HasAttributes}}
+	listA := map[string]**string{
+{{range .Attributes}}		"{{.ATag}}": &class.{{.Field}},
+{{end}}	}
+	for _, t := range start.Attr {
+		if field, ok := listA[common.XmlName(t.Name)]; ok {
+			val := t.Value
+			*field = &val
+		}
+	}
+{{- end}}
+
+{{if .HasChildren}}loop:
+{{end}}	for {
+		currentToken, err = d.Token()
+		if err != nil {
+			return
+		}
+{{if .HasChildren}}		switch elem := currentToken.(type) {
+		case xml.StartElement:
+			var container common.Container
+			switch common.XmlName(elem.Name) {
+{{range .Empty}}			case "{{.CTag}}":
+				class.{{.Field}} = common.NewEmptyClass(elem.Name)
+				container = class.{{.Field}}
+{{end}}
+{{range .Val}}			case "{{.CTag}}":
+				class.{{.Field}} = common.NewValClass(elem.Name)
+				container = class.{{.Field}}
+{{end}}
+{{range .Text}}			case "{{.CTag}}":
+				class.{{.Field}} = common.New{{.Type}}Class(elem.Name)
+				container = class.{{.Field}}
+{{end}}
+{{range .Children}}			case "{{.CTag}}":
+				class.{{.Field}} = {{.TypeNew}}Class(elem.Name)
+				container = class.{{.Field}}
+{{end}}			default:
+				continue loop
+			}
+			if err = d.DecodeElement(container, &elem); err != nil {
+				return
+			}
+			continue loop
+{{else}}		switch currentToken.(type) {
+{{end}}		case xml.EndElement:
+			return
+		}
+	}
+}
+
+func (class {{.Class}}) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) {
+	start.Name.Local = "{{.ClassTag}}"
+
+	hasNoAttr := true
+{{if .HasAttributes}}
+	list := []struct {
+		field *string
+		attr  string
+	}{
+{{range .Attributes}}		{class.{{.Field}}, "{{.ATag}}"},
+{{end}}	}
+	for _, v := range list {
+		if v.field != nil {
+			start.Attr = append(start.Attr, xml.Attr{Name: xml.Name{Local: v.attr}, Value: *v.field})
+		}
+		hasNoAttr = false
+	}
+{{end}}
+
+	if{{range .Fields}} class.{{.Name}} == nil &&{{.Sep}}{{end}} hasNoAttr {
+		return 
+	}
+
+{{if .HasChildren}}	err = e.EncodeToken(start)
+	if err != nil {
+		return
+	}
+
+	listC := []common.Container{
+		{{range .Fields}} class.{{.Name}},{{.Sep}}{{end}}
+		}
+	for _, v := range listC {
+		err = common.MarshalContainer(v, e)
+		if err != nil {
+			return
+		}
+	}
+	return e.EncodeToken(start.End())
+{{else}}	return e.EncodeElement("", start)
+{{end -}} }
+
+func New{{.Class}}(_ xml.Name) common.Container {
+ 	return &{{.Class}}{}
+}
+
+func New{{.Class}}Class(_ xml.Name) *{{.Class}} {
+	return &{{.Class}}{}
+}
+
+{{range .Attributes}}
+func (class *{{.Class}}) Set{{.Field}}(val ...any) *{{.Class}} {
+	class.{{.Field}} = common.SetString(val...)
+	return class
+}
+{{- end}}
+
+{{range .Empty}}
+func (class *{{.Class}}) Get{{.Field}}() bool {
+	return class.{{.Field}} != nil
+}
+
+func (class *{{.Class}}) Set{{.Field}}(v ...bool) {
+	class.{{.Field}} = common.NewEmptyXml(xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"}, v...)
+}
+{{- end}}
+
+{{range .Val}}
+func (class *{{.Class}}) Get{{.Field}}() string {
+	return common.GetValField(class.{{.Field}})
+}
+
+func (class *{{.Class}}) Set{{.Field}}(v ...any) {
+	class.{{.Field}} = common.NewValXml(xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"}, v...)
+}
+{{- end}}
+
+{{range .Text}}
+func (class *{{.Class}}) Get{{.Field}}() string {
+	if class.{{.Field}} != nil {
+		return class.{{.Field}}.Text
+	}
+	return ""
+}
+
+func (class *{{.Class}}) Set{{.Field}}(v ...string) {
+	class.{{.Field}} = common.New{{.Type}}Xml(xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"}, v...)
+}
+{{- end}}
+
+{{range .Children}}
+func (class *{{.Class}}) Add{{.Field}}() *{{.Type}} {
+	class.{{.Field}} =  {{.TypeNew}}Class(xml.Name{})
+	return class.{{.Field}}
+}
+
+func (class *{{.Class}}) Get{{.Field}}() *{{.Type}} {
+	return class.{{.Field}}
+}
+
+func (class *{{.Class}}) Set{{.Field}}(v ...*{{.Type}}) {
+	class.{{.Field}} = nil
+	if len(v)>0 {
+		class.{{.Field}} = v[0]
+	}
+}
+{{- end}}

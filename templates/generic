@@ -1,0 +1,83 @@
+// Generated using template/generic
+package {{.Package}}
+
+import (
+	"encoding/xml"
+
+	"{{.Github}}/linq/common"
+{{range .Imports}}	"{{.}}"
+{{end}})
+
+type {{.Class}} struct {
+	ns, tag string
+
+{{range .Attributes}}	{{.Field}} *string `xml:"{{.ATag}},attr"`
+{{end}}
+}
+
+func (class *{{.Class}}) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error) {
+	var currentToken xml.Token
+
+	class.ns = start.Name.Space
+	class.tag = start.Name.Local
+{{if .HasAttributes}}
+	listA := map[string]**string{
+{{range .Attributes}}		"{{.ATag}}": &class.{{.Field}},
+{{end}}	}
+	for _, t := range start.Attr {
+		if field, ok := list[common.XmlName(t.Name)]; ok {
+			val := t.Value
+			*field = &val
+		}
+	}
+{{- end}}
+
+	for {
+		currentToken, err = d.Token()
+		if err != nil {
+			return
+		}
+		switch elem := currentToken.(type) {
+		case xml.EndElement:
+			return
+		}
+	}
+}
+
+func (class {{.Class}}) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) {
+	start.Name.Local = class.ns + ":" + class.tag
+{{if .HasAttributes}}
+	list := []struct {
+		field *string
+		attr  string
+	}{
+{{range .Attributes}}		{class.{{.Field}}, "{{.ATag}}"},
+{{end}}	}
+	for _, v := range list {
+		if v.field != nil {
+			start.Attr = append(start.Attr, xml.Attr{Name: xml.Name{Local: v.attr}, Value: *v.field})
+		}
+	}
+{{end}}
+	return e.EncodeElement("", start)
+}
+
+func New{{.Class}}(name xml.Name) common.Container {
+	return &{{.Class}}{
+		ns:  name.Space,
+		tag: name.Local,
+	}
+}
+
+func New{{.Class}}Class(name xml.Name) *{{.Class}} {
+	return &{{.Class}}{
+		ns:  name.Space,
+		tag: name.Local,
+	}
+}
+{{range .Attributes}}
+func (class *{{.Class}}) Set{{.Field}}(val ...any) *{{.Class}} {
+	class.{{.Field}} = common.SetString(val...)
+	return class
+}
+{{- end}}

@@ -1,0 +1,36 @@
+// Generated using template/aacircular
+package a
+
+import (
+	"encoding/xml"
+
+	"{{.Github}}/linq/common"
+)
+
+type {{.Class}} struct {
+	Instance common.Container
+}
+
+func (class *{{.Class}}) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error) {
+	return class.Instance.UnmarshalXML(d, start)
+}
+
+func (class {{.Class}}) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) {
+	return class.Instance.MarshalXML(e, start)
+}
+
+var New{{.Class}}aCircular common.FuncXMLNameToContainer
+
+func New{{.Class}}(name xml.Name) common.Container {
+	b := &Ext_a{
+		Instance: New{{.Class}}aCircular(name),
+	}
+	return b
+}
+
+func New{{.Class}}Class(name xml.Name) *{{.Class}} {
+	b := &{{.Class}}{
+		Instance: New{{.Class}}aCircular(name),
+	}
+	return b
+}
