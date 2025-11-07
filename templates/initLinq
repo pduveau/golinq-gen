@@ -20,7 +20,7 @@ func Ext_a_to_Ext_aacircular(in *a.Ext_a) *aacircular.Ext_a {
 	return nil
 }
 
-func GraphicData_a_to_GraphicData_aacircular(in *a.Ext_a) *aacircular.GraphicData_a {
+func GraphicData_a_to_GraphicData_aacircular(in *a.GraphicData_a) *aacircular.GraphicData_a {
 	switch a := in.Instance.(type) {
 	case *aacircular.GraphicData_a:
 		return a

@@ -69,11 +69,18 @@ func (class *Text) is(name xml.Name) bool {
 	return class.ns == name.Space && class.tag == name.Local
 }
 
-func NewText(name xml.Name) Container {
-	return NewTextClass(name)
+func NewText(name xml.Name, _ Container) Container {
+	return NewTextClass(name, nil)
 }
 
-func NewTextClass(name xml.Name) *Text {
+func (class *Text) SetParent(_ Container) {
+}
+
+func (class *Text) GetParent() Container {
+	return nil
+}
+
+func NewTextClass(name xml.Name, _ Container) *Text {
 	return &Text{
 		ns:  name.Space,
 		tag: name.Local,
@@ -133,7 +140,7 @@ func SetText(o []Container, name xml.Name, val ...string) []Container {
 		o = slices.Delete(o, i, 1)
 	}
 	for _, v := range val {
-		t := NewTextClass(name)
+		t := NewTextClass(name, nil)
 		t.Text = v
 		o = append(o, t)
 	}
@@ -190,15 +197,22 @@ func (class *RawText) MarshalXML(e *xml.Encoder, start xml.StartElement) (err er
 	return e.Encode(v)
 }
 
-func NewRawText(name xml.Name) Container {
-	return NewRawTextClass(name)
+func NewRawText(name xml.Name, parent Container) Container {
+	return NewRawTextClass(name, parent)
 }
 
-func NewRawTextClass(name xml.Name) *RawText {
+func NewRawTextClass(name xml.Name, _ Container) *RawText {
 	return &RawText{
 		ns:  name.Space,
 		tag: name.Local,
 	}
+}
+
+func (class *RawText) SetParent(_ Container) {
+}
+
+func (class *RawText) GetParent() Container {
+	return nil
 }
 
 func NewRawTextXml(name xml.Name, val ...string) *RawText {
@@ -258,7 +272,7 @@ func SetRawText(o []Container, name xml.Name, val ...string) []Container {
 		o = slices.Delete(o, i, 1)
 	}
 	for _, v := range val {
-		t := NewRawTextClass(name)
+		t := NewRawTextClass(name, nil)
 		t.Text = v
 		o = append(o, t)
 	}
@@ -275,6 +289,13 @@ func (class TextFragment) MarshalXML(e *xml.Encoder, start xml.StartElement) (er
 
 // Container compatibility
 func (class *TextFragment) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error) {
+	return nil
+}
+
+func (class *TextFragment) SetParent(_ Container) {
+}
+
+func (class *TextFragment) GetParent() Container {
 	return nil
 }
 

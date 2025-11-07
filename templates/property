@@ -9,6 +9,8 @@ import (
 {{end}})
 
 type {{.Class}} struct {
+	parent common.Container
+
 {{range .Attributes}}	{{.Field}} *string `xml:"{{.ATag}},attr"`
 {{end}}
 {{range .Empty}}	{{.Field}} *common.Empty `xml:"{{.CTag}}"`
@@ -46,19 +48,19 @@ func (class *{{.Class}}) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (e
 			var container common.Container
 			switch common.XmlName(elem.Name) {
 {{range .Empty}}			case "{{.CTag}}":
-				class.{{.Field}} = common.NewEmptyClass(elem.Name)
+				class.{{.Field}} = common.NewEmptyClass(elem.Name, class)
 				container = class.{{.Field}}
 {{end}}
 {{range .Val}}			case "{{.CTag}}":
-				class.{{.Field}} = common.NewValClass(elem.Name)
+				class.{{.Field}} = common.NewValClass(elem.Name, class)
 				container = class.{{.Field}}
 {{end}}
 {{range .Text}}			case "{{.CTag}}":
-				class.{{.Field}} = common.New{{.Type}}Class(elem.Name)
+				class.{{.Field}} = common.New{{.Type}}Class(elem.Name, class)
 				container = class.{{.Field}}
 {{end}}
 {{range .Children}}			case "{{.CTag}}":
-				class.{{.Field}} = {{.TypeNew}}Class(elem.Name)
+				class.{{.Field}} = {{.TypeNew}}Class(elem.Name, class)
 				container = class.{{.Field}}
 {{end}}			default:
 				continue loop
@@ -115,12 +117,20 @@ func (class {{.Class}}) MarshalXML(e *xml.Encoder, start xml.StartElement) (err 
 {{else}}	return e.EncodeElement("", start)
 {{end -}} }
 
-func New{{.Class}}(_ xml.Name) common.Container {
- 	return &{{.Class}}{}
+func New{{.Class}}(_ xml.Name, parent common.Container) common.Container {
+ 	return &{{.Class}}{parent: parent}
 }
 
-func New{{.Class}}Class(_ xml.Name) *{{.Class}} {
-	return &{{.Class}}{}
+func New{{.Class}}Class(_ xml.Name, parent common.Container) *{{.Class}} {
+	return &{{.Class}}{parent: parent}
+}
+
+func (class *{{.Class}})SetParent(parent common.Container) {
+	class.parent = parent
+}
+
+func (class *{{.Class}})GetParent() (common.Container) {
+	return class.parent
 }
 
 {{range .Attributes}}
@@ -135,8 +145,9 @@ func (class *{{.Class}}) Get{{.Field}}() bool {
 	return class.{{.Field}} != nil
 }
 
-func (class *{{.Class}}) Set{{.Field}}(v ...bool) {
+func (class *{{.Class}}) Set{{.Field}}(v ...bool) *{{.Class}} {
 	class.{{.Field}} = common.NewEmptyXml(xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"}, v...)
+	return class
 }
 {{- end}}
 
@@ -145,8 +156,9 @@ func (class *{{.Class}}) Get{{.Field}}() string {
 	return common.GetValField(class.{{.Field}})
 }
 
-func (class *{{.Class}}) Set{{.Field}}(v ...any) {
+func (class *{{.Class}}) Set{{.Field}}(v ...any) *{{.Class}}{
 	class.{{.Field}} = common.NewValXml(xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"}, v...)
+	return class
 }
 {{- end}}
 
@@ -158,14 +170,15 @@ func (class *{{.Class}}) Get{{.Field}}() string {
 	return ""
 }
 
-func (class *{{.Class}}) Set{{.Field}}(v ...string) {
+func (class *{{.Class}}) Set{{.Field}}(v ...string) *{{.Class}} {
 	class.{{.Field}} = common.New{{.Type}}Xml(xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"}, v...)
+	return class
 }
 {{- end}}
 
 {{range .Children}}
 func (class *{{.Class}}) Add{{.Field}}() *{{.Type}} {
-	class.{{.Field}} =  {{.TypeNew}}Class(xml.Name{})
+	class.{{.Field}} =  {{.TypeNew}}Class(xml.Name{}, class)
 	return class.{{.Field}}
 }
 
@@ -177,6 +190,7 @@ func (class *{{.Class}}) Set{{.Field}}(v ...*{{.Type}}) {
 	class.{{.Field}} = nil
 	if len(v)>0 {
 		class.{{.Field}} = v[0]
+		v[0].SetParent(class)
 	}
 }
 {{- end}}

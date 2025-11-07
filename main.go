@@ -54,6 +54,7 @@ func main() {
 		parseNamespace(f, u)
 	}
 
+	patchA()
 	patchRId()
 	patchMC()
 	patchW()
@@ -62,7 +63,7 @@ func main() {
 
 	prepare()
 
-	delete(xmlElements["w"]["rPr"].Children, "w:shadow")
+	// delete(xmlElements["w"]["rPr"].Children, "w:shadow")
 
 	common := filepath.Join(folder, "common")
 	err = os.MkdirAll(common, 0775)
@@ -306,6 +307,29 @@ func patchRId() {
 	xmlAttributes["r"]["id"].Goname = "RId"
 }
 
+func patchA() {
+	xmlElements["a"]["fillRect"].Xmlattribs = append(xmlElements["a"]["fillRect"].Xmlattribs,
+		xmldata{Name: "b", Url: "DocumentFormat.OpenXml.Linq.NoNamespace.html"},
+		xmldata{Name: "l", Url: "DocumentFormat.OpenXml.Linq.NoNamespace.html"},
+		xmldata{Name: "t", Url: "DocumentFormat.OpenXml.Linq.NoNamespace.html"},
+		xmldata{Name: "r", Url: "DocumentFormat.OpenXml.Linq.NoNamespace.html"},
+	)
+	xmlElements["a"]["ext"].Xmlattribs = append(xmlElements["a"]["ext"].Xmlattribs,
+		xmldata{Name: "cx", Url: "DocumentFormat.OpenXml.Linq.A.html"},
+		xmldata{Name: "cy", Url: "DocumentFormat.OpenXml.Linq.A.html"},
+	)
+	xmlAttributes["a"]["cx"] = &element{
+		Goname: "Cx",
+		ELocal: "cx",
+		ETag:   "a:cx",
+	}
+	xmlAttributes["a"]["cy"] = &element{
+		Goname: "Cy",
+		ELocal: "cy",
+		ETag:   "a:cy",
+	}
+}
+
 func patchW() {
 	b := &class{
 		Aliases: []string{"bottom", "left", "right", "top", "insideH", "insideV", "tl2br", "tr2bl", "end"},
@@ -352,6 +376,17 @@ func patchW() {
 	delete(xmlElements["w"], "tl2br")
 	delete(xmlElements["w"], "tr2bl")
 
+	xmlElements["w"]["tblW"].Xmlattribs = append(xmlElements["w"]["tblW"].Xmlattribs,
+		xmldata{Name: "w", Url: "DocumentFormat.OpenXml.Linq.W.html"},
+		xmldata{Name: "type", Url: "DocumentFormat.OpenXml.Linq.W.html"},
+	)
+
+	xmlAttributes["w"]["w"] = &element{
+		Goname: "W",
+		ELocal: "w",
+		ETag:   "w:w",
+	}
+
 	xmlAttributes["w"]["frame"] = &element{
 		Goname: "Frame",
 		ELocal: "frame",
@@ -367,6 +402,13 @@ func patchW() {
 		ELocal: "size",
 		ETag:   "w:size",
 	}
+
+	for _, p := range []string{"basedOn", "pStyle", "rStyle", "numId", "sz", "szCs", "lang"} {
+		xmlElements["w"][p].classType = Valclass
+	}
+
+	xmlElements["w"]["document"].isProperties = true
+	xmlElements["w"]["hyperlink"].isProperties = true
 }
 
 func patchMC() {

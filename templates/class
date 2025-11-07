@@ -11,6 +11,7 @@ import (
 {{end}})
 
 type {{.Class}} struct {
+	parent common.Container
 {{if .Shared}}	ns, tag    string
 
 {{end}}{{range .Attributes}}	{{.Field}} *string `xml:"{{.ATag}},attr"`
@@ -70,7 +71,7 @@ func (class *{{.Class}}) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (e
 			}
 
 {{end}}			if f, ok := mapChildren{{.Class}}[common.XmlName(elem.Name)]; ok {
-				container := f(elem.Name)
+				container := f(elem.Name, class)
 				if err = d.DecodeElement(container, &elem); err != nil {
 					return
 				}
@@ -145,29 +146,40 @@ func (class {{.Class}}) MarshalXML(e *xml.Encoder, start xml.StartElement) (err 
 {{else}}
 	return e.EncodeElement({{if .HasTextOnly}}class.Text{{else}}""{{end}}, start)
 {{end -}} }
-{{if .Shared}}
-func New{{.Class}}(name xml.Name) common.Container {
+
+{{if .Shared}}func New{{.Class}}(name xml.Name, parent common.Container) common.Container {
 	return &{{.Class}}{
+		parent: parent,
 		ns:  name.Space,
 		tag: name.Local,
 	}
 }
 
-func New{{.Class}}Class(name xml.Name) *{{.Class}} {
+func New{{.Class}}Class(name xml.Name, parent common.Container) *{{.Class}} {
 	return &{{.Class}}{
+		parent: parent,
 		ns:  name.Space,
 		tag: name.Local,
 	}
-}{{else}}
-func New{{.Class}}(_ xml.Name) common.Container {
-	return &{{.Class}}{}
 }
 
-func New{{.Class}}Class(_ xml.Name) *{{.Class}} {
-	return &{{.Class}}{}
+{{else}}func New{{.Class}}(_ xml.Name, parent common.Container) common.Container {
+	return &{{.Class}}{parent: parent}
 }
 
-{{end}}{{if .HasTextOnly}}func (class *{{.Class}})SetText(text string) {
+func New{{.Class}}Class(_ xml.Name, parent common.Container) *{{.Class}} {
+	return &{{.Class}}{parent: parent}
+}
+
+{{end}}func (class *{{.Class}})SetParent(parent common.Container) {
+	class.parent = parent
+}
+
+func (class *{{.Class}})GetParent() (common.Container) {
+	return class.parent
+}
+
+{{if .HasTextOnly}}func (class *{{.Class}})SetText(text string) {
 	class.Text = text
 }
 
@@ -207,6 +219,10 @@ func (class *{{.Class}}) InsertChildren(in []common.Container, at int) {
 	class.children = slices.Insert(class.children, at, in...)
 }
 
+func (class *{{.Class}}) AppendChildren(in []common.Container) {
+	class.children = append(class.children, in...)
+}
+
 {{end}}{{range .Attributes}}
 func (class *{{.Class}}) ASet{{.Field}}(val ...any) *{{.Class}} {
 	class.{{.Field}} = common.SetString(val...)
@@ -218,8 +234,9 @@ func (class *{{.Class}}) Get{{.Field}}() bool {
 	return common.GetEmpty(class.children, xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"}) > -1
 }
 
-func (class *{{.Class}}) Set{{.Field}}(v ...bool) {
+func (class *{{.Class}}) Set{{.Field}}(v ...bool) *{{.Class}} {
 	class.children = common.SetEmpty(class.children, xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"}, v...)
+	return class
 }
 
 {{end}}{{range .Val}}
@@ -228,8 +245,9 @@ func (class *{{.Class}}) Get{{.Field}}() string {
 	return v
 }
 
-func (class *{{.Class}}) Set{{.Field}}(v ...any) {
+func (class *{{.Class}}) Set{{.Field}}(v ...any) *{{.Class}} {
 	class.children = common.SetVal(class.children, xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"}, v...)
+	return class
 }
 
 {{end}}{{range .Text}}
@@ -237,16 +255,17 @@ func (class *{{.Class}}) Get{{.Field}}() ([]string, []int) {
 	return common.Get{{.Type}}(class.children, xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"})
 }
 
-func (class *{{.Class}}) Set{{.Field}}(v ...string) {
+func (class *{{.Class}}) Set{{.Field}}(v ...string) *{{.Class}} {
 	class.children = common.Set{{.Type}}(class.children, xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"}, v...)
+	return class
 }
 
 {{end}}{{range .Children}}{{$method := .Field}}{{if ne .FieldSfx ""}}{{$method = .FieldSfx}}
 func (class *{{.Class}}) Add{{$method}}() *{{.Type}} {
-	v := {{.TypeNew}}Class(xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"})
+	v := {{.TypeNew}}Class(xml.Name{Space: "{{.Space}}", Local: "{{.Local}}"}, class)
 {{else}}
 func (class *{{.Class}}) Add{{$method}}() *{{.Type}} {
-	v := {{.TypeNew}}Class(xml.Name{})
+	v := {{.TypeNew}}Class(xml.Name{}, class)
 {{end}}
 	class.children = append(class.children, v)
 	return v
@@ -262,6 +281,7 @@ func (class *{{.Class}}) Set{{$method}}(children ...*{{.Type}}) {
 		class.children = slices.Delete(class.children, i, i+1)
 	}
 	for _,v := range children {
+		v.SetParent(class)
 		class.children = append(class.children, v)
 	}
 }

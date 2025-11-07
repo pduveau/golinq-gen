@@ -42,11 +42,18 @@ func (class Empty) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error
 	return
 }
 
-func NewEmpty(name xml.Name) Container {
-	return NewEmptyClass(name)
+func NewEmpty(name xml.Name, _ Container) Container {
+	return NewEmptyClass(name, nil)
 }
 
-func NewEmptyClass(name xml.Name) *Empty {
+func (class *Empty) SetParent(_ Container) {
+}
+
+func (class *Empty) GetParent() Container {
+	return nil
+}
+
+func NewEmptyClass(name xml.Name, _ Container) *Empty {
 	return &Empty{
 		ns:  name.Space,
 		tag: name.Local,
@@ -106,7 +113,7 @@ func SetEmpty(o []Container, name xml.Name, v ...bool) []Container {
 		return append(o[:i], o[i+1:]...)
 	}
 	if len(v) == 0 || !v[0] && i == 0 {
-		return append(o[:i], NewEmpty(name))
+		return append(o[:i], NewEmpty(name, nil))
 	}
 	return o
 }

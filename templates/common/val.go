@@ -58,7 +58,7 @@ func (class Val) MarshalXML(e *xml.Encoder, start xml.StartElement) (err error) 
 	return nil
 }
 
-func NewVal(name xml.Name) Container {
+func NewVal(name xml.Name, _ Container) Container {
 	return &Val{
 		ns:    name.Space,
 		tag:   name.Local,
@@ -66,12 +66,19 @@ func NewVal(name xml.Name) Container {
 	}
 }
 
-func NewValClass(name xml.Name) *Val {
+func NewValClass(name xml.Name, _ Container) *Val {
 	return &Val{
 		ns:    name.Space,
 		tag:   name.Local,
 		nsval: name.Space + ":val",
 	}
+}
+
+func (class *Val) SetParent(_ Container) {
+}
+
+func (class *Val) GetParent() Container {
+	return nil
 }
 
 func (class *Val) SetVal(val any) {
@@ -86,7 +93,7 @@ func (class *Val) SetVal(val any) {
 
 func NewValXml(name xml.Name, val ...any) *Val {
 	if len(val) > 0 {
-		ret := NewValClass(name)
+		ret := NewValClass(name, nil)
 		ret.SetVal(val)
 		return ret
 	}

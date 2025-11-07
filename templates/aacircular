@@ -21,16 +21,25 @@ func (class {{.Class}}) MarshalXML(e *xml.Encoder, start xml.StartElement) (err 
 
 var New{{.Class}}aCircular common.FuncXMLNameToContainer
 
-func New{{.Class}}(name xml.Name) common.Container {
+func New{{.Class}}(name xml.Name, parent common.Container) common.Container {
 	b := &Ext_a{
-		Instance: New{{.Class}}aCircular(name),
+		Instance: New{{.Class}}aCircular(name, parent),
 	}
 	return b
 }
 
-func New{{.Class}}Class(name xml.Name) *{{.Class}} {
+func New{{.Class}}Class(name xml.Name, parent common.Container) *{{.Class}} {
 	b := &{{.Class}}{
-		Instance: New{{.Class}}aCircular(name),
+		Instance: New{{.Class}}aCircular(name, parent),
 	}
 	return b
 }
+
+func (class *{{.Class}})SetParent(parent common.Container) {
+	class.Instance.SetParent(parent)
+}
+
+func (class *{{.Class}})GetParent() (common.Container) {
+	return class.Instance.GetParent()
+}
+

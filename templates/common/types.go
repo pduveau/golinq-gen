@@ -11,9 +11,11 @@ import (
 type Container interface {
 	MarshalXML(e *xml.Encoder, start xml.StartElement) error
 	UnmarshalXML(d *xml.Decoder, start xml.StartElement) error
+	SetParent(Container)
+	GetParent() Container
 }
 
-type FuncXMLNameToContainer func(xml.Name) Container
+type FuncXMLNameToContainer func(xml.Name, Container) Container
 
 func XmlName(n xml.Name) string {
 	if n.Space != "" {
@@ -41,6 +43,21 @@ func SetString(val ...any) *string {
 			return &v
 		case int:
 			str := strconv.Itoa(v)
+			return &str
+		case uint:
+			str := strconv.FormatUint(uint64(v), 10)
+			return &str
+		case int64:
+			str := strconv.FormatInt(v, 10)
+			return &str
+		case uint64:
+			str := strconv.FormatUint(v, 10)
+			return &str
+		case float32:
+			str := strconv.FormatFloat(float64(v), 'f', 2, 32)
+			return &str
+		case float64:
+			str := strconv.FormatFloat(v, 'f', 2, 64)
 			return &str
 		}
 	}

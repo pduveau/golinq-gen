@@ -9,6 +9,7 @@ import (
 {{end}})
 
 type {{.Class}} struct {
+	parent common.Container
 	ns, tag string
 
 {{range .Attributes}}	{{.Field}} *string `xml:"{{.ATag}},attr"`
@@ -62,18 +63,27 @@ func (class {{.Class}}) MarshalXML(e *xml.Encoder, start xml.StartElement) (err 
 	return e.EncodeElement("", start)
 }
 
-func New{{.Class}}(name xml.Name) common.Container {
+func New{{.Class}}(name xml.Name, parent common.Container) common.Container {
 	return &{{.Class}}{
+		parent: parent,
 		ns:  name.Space,
 		tag: name.Local,
 	}
 }
 
-func New{{.Class}}Class(name xml.Name) *{{.Class}} {
+func New{{.Class}}Class(name xml.Name, parent common.Container) *{{.Class}} {
 	return &{{.Class}}{
+		parent: parent,
 		ns:  name.Space,
 		tag: name.Local,
 	}
+}
+
+func (class *{{.Class}}) SetParent(_ Container) {
+}
+
+func (class *{{.Class}}) GetParent() Container {
+	return nil
 }
 {{range .Attributes}}
 func (class *{{.Class}}) Set{{.Field}}(val ...any) *{{.Class}} {
